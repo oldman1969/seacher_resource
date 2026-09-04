@@ -27,7 +27,7 @@ CONFIG_PATH = PROJECT_ROOT / "config.yaml"
 class ProviderConfig(BaseModel):
     enabled: bool = False
     base_url: str | None = None       # pansou 等自托管服务地址
-    limit: int = 10                   # 每源返回条数上限
+    limit: int = 0                    # 每源返回条数上限；0 = 使用全局 per_source_limit
 
 
 class ProbeConfig(BaseModel):
@@ -42,8 +42,8 @@ class ProbeConfig(BaseModel):
 
 class SearchConfig(BaseModel):
     deadline: float = 8.0             # 单源整体超时(秒)
-    per_source_limit: int = 10
-    enrich_top: int = 5               # 每类型 enrich 的条数
+    per_source_limit: int = 100       # 每源返回条数上限
+    enrich_top: int = 10              # 每类型 enrich 的条数
 
 
 class AppConfig(BaseModel):

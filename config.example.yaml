@@ -37,5 +37,5 @@ probe:
 
 search:
   deadline: 8.0              # 单源整体超时（秒）
-  per_source_limit: 10
-  enrich_top: 5              # 每类型补付费元数据的条数
+  per_source_limit: 100      # 每源返回条数上限
+  enrich_top: 10             # 每类型补付费元数据的条数
