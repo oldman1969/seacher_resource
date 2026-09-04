@@ -1,0 +1,29 @@
+# 兼容 docker compose 与 podman-compose（用户环境为 podman）：
+#   podman-compose up -d pansou
+# 或直接 podman 运行（见 README「部署 PanSou」一节）
+services:
+  app:
+    build: .
+    # 本地直接跑: uvicorn app.main:app --reload --port 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./.env:/app/.env:ro
+    depends_on:
+      - pansou
+
+  pansou:
+    # 网盘/磁力聚合搜索 sidecar（github.com/fish2018/pansou, MIT）
+    # 实测要点：AUTH_ENABLED 必须显式 false（新版镜像默认开认证）；
+    # CHANNELS 逗号分隔；TG 需代理，无代理时结果主要靠插件源（全量 60+）
+    image: ghcr.io/fish2018/pansou:latest
+    ports:
+      - "8888:8888"
+    environment:
+      - CHANNELS=tgsearchers6
+      - ENABLED_PLUGINS=dyyjpro,duoduo,djgou,feikuai,gaoqing888,gying,hdmoli,haitunsou,hunhepan,ikantv,jutoushe,kkv,dy4k,libvio,lingjisp,lou1,melost,meitizy,miosou,nyaa,ouge,panlian,pansearch,qqpd,quark4k,quarksoo,quarktv,qupanshe,sousou,thepiratebay,ting77,wanou,weibo,xb6v,xiaokupan,xiaozhang,xiaoyu,yingso,yulinshufa,yunso,yunsou,zlxapp,zxzj,rrbt,quarkres,diduan,erxiao,huban,labi,muou,shandian,zhizhen
+      - AUTH_ENABLED=false
+      # 若有 socks5 代理（启用 TG 频道源）：
+      # - PROXY=socks5://host.containers.internal:7890
+    restart: unless-stopped

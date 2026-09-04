@@ -1,0 +1,41 @@
+# 全网资源聚合搜索 配置示例
+# 复制为 config.yaml 后按需修改；改完无需重启（每次搜索热加载）
+
+# 可选：代理（启用国际源时必须，如 http://127.0.0.1:7890 或 socks5://...）
+# proxy: http://127.0.0.1:7890
+
+providers:
+  # ---- Phase 0 实测直连可用 ----
+  bilibili: { enabled: true }                       # B 站视频（游客态 wbi）
+  netease: { enabled: true }                        # 网易云音乐（fee 付费判定）
+  douban: { enabled: true }                         # 豆瓣 suggest（限流敏感）
+  pansou:                                          # 网盘/磁力聚合 sidecar
+    enabled: true
+    base_url: http://127.0.0.1:8888                 # docker-compose 部署时用 http://pansou:8888
+
+  # ---- 国际源：当前网络直连不可达，配 proxy 后启用 ----
+  internet_archive: { enabled: false }
+  openlibrary: { enabled: false }
+  gutenberg: { enabled: false }
+  librivox: { enabled: false }
+
+  # ---- 不稳定/实验性 ----
+  ximalaya: { enabled: false }                      # 接口软风控，Phase 2
+  youtube: { enabled: false }                       # 需 YOUTUBE_API_KEY + 代理
+  spotify: { enabled: false }                       # 需 SPOTIFY_* + 代理
+  podcastindex: { enabled: false }                  # 需 PODCASTINDEX_*
+  weread: { enabled: false }                        # 需登录 cookie，实验性
+
+probe:
+  per_domain_concurrency: 2
+  global_concurrency: 10
+  baidu_min_interval: 2.0    # 百度 share 页最小间隔（防风控）
+  timeout_connect: 3.0
+  timeout_read: 8.0
+  cache_ttl: 3600
+  auto_probe_top: 3          # 搜索时每类型自动探测条数
+
+search:
+  deadline: 8.0              # 单源整体超时（秒）
+  per_source_limit: 10
+  enrich_top: 5              # 每类型补付费元数据的条数

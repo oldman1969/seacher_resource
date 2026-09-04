@@ -1,0 +1,105 @@
+/* 全网资源聚合搜索 —— 标签配色：免费绿 / VIP橙 / 付费红 / 未知灰 */
+
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --text: #1f2328;
+  --muted: #6a737d;
+  --border: #e4e7eb;
+  --accent: #2563eb;
+  --green: #16a34a;
+  --orange: #ea580c;
+  --red: #dc2626;
+  --gray: #9ca3af;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  max-width: 1080px; margin: 0 auto; padding: 24px 16px 60px;
+}
+
+header { text-align: center; margin: 24px 0; }
+header h1 { font-size: 26px; letter-spacing: 1px; }
+.sub { color: var(--muted); margin-top: 6px; font-size: 13px; }
+
+.search-bar { display: flex; gap: 10px; margin-bottom: 12px; }
+#kw {
+  flex: 1; padding: 12px 16px; font-size: 15px; border: 2px solid var(--border);
+  border-radius: 10px; outline: none; transition: border-color .15s;
+}
+#kw:focus { border-color: var(--accent); }
+#go {
+  padding: 12px 32px; font-size: 15px; border: none; border-radius: 10px;
+  background: var(--accent); color: #fff; cursor: pointer; font-weight: 600;
+}
+#go:hover { filter: brightness(1.08); }
+#go:disabled { opacity: .6; cursor: wait; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 8px; font-size: 14px; }
+.filters label { display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--muted); }
+.filters .free-only { margin-left: auto; color: var(--green); font-weight: 600; }
+
+.status { font-size: 13px; color: var(--muted); min-height: 20px; margin: 10px 2px; }
+.status .err { color: var(--orange); }
+
+/* 类型分组 */
+.group { margin: 26px 0 10px; }
+.group h2 { font-size: 17px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.group h2 .count { color: var(--muted); font-size: 13px; font-weight: normal; margin-left: 6px; }
+
+/* 卡片 */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; display: flex; gap: 12px;
+  transition: box-shadow .15s; position: relative;
+}
+.card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+.card .cover {
+  width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+  background: #eceff3;
+}
+.card .cover-placeholder {
+  width: 64px; height: 64px; border-radius: 8px; flex-shrink: 0; background: #eceff3;
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+}
+.card .body { flex: 1; min-width: 0; }
+.card .title {
+  font-size: 14px; font-weight: 600; line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.card .title a { color: var(--text); text-decoration: none; }
+.card .title a:hover { color: var(--accent); }
+.card .meta { font-size: 12px; color: var(--muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+/* 标签 */
+.tag {
+  font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600;
+  border: 1px solid transparent;
+}
+.tag.pay-free { color: var(--green); background: #f0fdf4; border-color: #bbf7d0; }
+.tag.pay-vip { color: var(--orange); background: #fff7ed; border-color: #fed7aa; }
+.tag.pay-paid { color: var(--red); background: #fef2f2; border-color: #fecaca; }
+.tag.pay-unknown { color: var(--gray); background: #f9fafb; border-color: var(--border); }
+.tag.src { color: var(--muted); background: #f3f4f6; border-color: var(--border); font-weight: 400; }
+.tag.pan { color: #7c3aed; background: #f5f3ff; border-color: #ddd6fe; font-weight: 400; }
+
+/* 可用性 */
+.avail { font-size: 11px; font-weight: 600; cursor: default; }
+.avail-available { color: var(--green); }
+.avail-unavailable { color: var(--red); }
+.avail-unverified { color: var(--gray); cursor: pointer; text-decoration: underline dotted; }
+.avail-unverified:hover { color: var(--accent); }
+
+.pwd-chip {
+  font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer;
+  background: #fefce8; border: 1px dashed #fde047; color: #854d0e;
+}
+
+footer { margin-top: 48px; text-align: center; font-size: 12px; color: var(--muted); }
+
+.loading { text-align: center; padding: 40px; color: var(--muted); }
+.empty { text-align: center; padding: 40px; color: var(--muted); }
