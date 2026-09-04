@@ -36,6 +36,15 @@ PAN_TYPE_MAP: dict[str, ResourceType] = {
 PWD_RE = re.compile(r"(?:提取码|访问码|密码|pwd|code)\s*[:=：]?\s*([0-9a-zA-Z]{4,8})")
 
 
+# 常见文件扩展名：网盘搜索场景用户常带扩展名搜（如 "斩神.txt"），
+# 但搜索站的分词对整串精确匹配，带扩展名往往 0 结果 → 自动降级为去扩展名重搜
+_FILE_EXT_RE = re.compile(
+    r"\.(txt|pdf|epub|mobi|azw3?|docx?|xlsx?|pptx?|zip|rar|7z|tar|gz"
+    r"|mkv|mp4|avi|rmvb|mov|iso|mp3|flac|wav|apk|exe|dmg)\s*$",
+    re.IGNORECASE,
+)
+
+
 class PanSouProvider(BaseProvider):
     name = "pansou"
     supported_types = (ResourceType.netdisk_share, ResourceType.magnet)
@@ -49,19 +58,30 @@ class PanSouProvider(BaseProvider):
 
     async def search(self, keyword: str, limit: int = 10) -> list[Resource]:
         try:
-            resp = await self.client.post(
-                f"{self.base_url}{SEARCH_PATH}",
-                json={"kw": keyword},
-                timeout=15.0,
-            )
-            if resp.status_code != 200:
-                raise ProviderError(self.name, f"HTTP {resp.status_code}（PanSou 服务未启动？）")
-            data = resp.json()
-            return self._to_resources(data, limit)
+            resources = await self._do_search(keyword, limit)
+            if not resources:
+                # 冷词降级：去掉文件扩展名重搜（"斩神.txt" → "斩神"）
+                m = _FILE_EXT_RE.search(keyword.strip())
+                if m:
+                    base = keyword.strip()[: m.start()].strip()
+                    if base:
+                        resources = await self._do_search(base, limit)
+            return resources
         except ProviderError:
             raise
         except Exception as exc:  # noqa: BLE001
             raise ProviderError(self.name, f"{type(exc).__name__}: {exc}") from exc
+
+    async def _do_search(self, keyword: str, limit: int) -> list[Resource]:
+        resp = await self.client.post(
+            f"{self.base_url}{SEARCH_PATH}",
+            json={"kw": keyword},
+            timeout=15.0,
+        )
+        if resp.status_code != 200:
+            raise ProviderError(self.name, f"HTTP {resp.status_code}（PanSou 服务未启动？）")
+        data = resp.json()
+        return self._to_resources(data, limit)
 
     @staticmethod
     def _extract_items(data) -> list[dict]:

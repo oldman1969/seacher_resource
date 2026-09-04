@@ -216,3 +216,44 @@ async def test_pansou_unreachable_raises():
     )
     with pytest.raises(ProviderError):
         await provider.search("x")
+
+
+@respx.mock
+async def test_pansou_extension_fallback():
+    """带扩展名的冷词 0 结果时，自动去扩展名重搜."""
+    provider = _make(PanSouProvider, base_url="http://127.0.0.1:18888")
+    route = respx.post("http://127.0.0.1:18888/api/search")
+
+    # 第一次（斩神.txt）返回空，第二次（斩神）返回结果
+    responses = [
+        httpx.Response(200, json={"code": 0, "data": {"total": 0, "merged_by_type": {}}}),
+        httpx.Response(200, json={
+            "code": 0,
+            "data": {"total": 1, "merged_by_type": {
+                "baidu": [{"url": "https://pan.baidu.com/s/1zz99", "password": "ab12",
+                           "note": "斩神 全本", "datetime": "2026-08-01T00:00:00Z",
+                           "source": "plugin:xiaokupan"}]
+            }},
+        }),
+    ]
+    route.side_effect = responses
+
+    resources = await provider.search("斩神.txt", 5)
+    assert len(resources) == 1
+    assert resources[0].title == "斩神 全本"
+    # 两次调用的关键词分别是原词和去扩展名词
+    import json as _json
+    assert _json.loads(route.calls[0].request.read())["kw"] == "斩神.txt"
+    assert _json.loads(route.calls[1].request.read())["kw"] == "斩神"
+
+
+@respx.mock
+async def test_pansou_no_fallback_when_results():
+    """有结果时不做降级（只发一次请求）."""
+    provider = _make(PanSouProvider, base_url="http://127.0.0.1:18888")
+    route = respx.post("http://127.0.0.1:18888/api/search")
+    route.mock(return_value=httpx.Response(200, json=PANSOU_RESP))
+
+    resources = await provider.search("三体.txt", 5)
+    assert len(resources) == 2
+    assert len(route.calls) == 1
