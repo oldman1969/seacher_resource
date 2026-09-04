@@ -87,6 +87,8 @@ class PanSouProvider(BaseProvider):
         """解析 PanSou 响应：data.merged_by_type = {pan_type: [item]}.
 
         item 字段（实测 2026-09）：{url, password, note, datetime, source}.
+        按网盘类型轮询取样（round-robin）：避免条数多的类型（如 quark）
+        填满 limit 把其他类型（baidu/aliyun/115...）挤掉.
         """
         payload = data.get("data") if isinstance(data, dict) else None
         merged = None
@@ -96,16 +98,33 @@ class PanSouProvider(BaseProvider):
             # 旧版本兼容：平铺列表
             return self._to_resources_flat(self._extract_items(data), limit)
 
-        out: list[Resource] = []
+        # 先全部转为 Resource（带去重），再轮询取样
+        by_type: list[list[Resource]] = []
+        seen_ids: set[str] = set()
         for pan_type, items in merged.items():
+            group: list[Resource] = []
             for i, it in enumerate(items):
                 if not isinstance(it, dict):
                     continue
                 r = self._item_to_resource(it, i, pan_type)
-                if r:
-                    out.append(r)
+                if r and r.resource_id not in seen_ids:
+                    seen_ids.add(r.resource_id)
+                    group.append(r)
+            if group:
+                by_type.append(group)
+
+        out: list[Resource] = []
+        while len(out) < limit and by_type:
+            # 每轮从每个类型各取一条，直至凑满 limit
+            still_alive: list[list[Resource]] = []
+            for group in by_type:
                 if len(out) >= limit:
-                    return out
+                    still_alive.append(group)
+                    continue
+                out.append(group.pop(0))
+                if group:
+                    still_alive.append(group)
+            by_type = still_alive
         return out
 
     def _to_resources_flat(self, items: list[dict], limit: int) -> list[Resource]:
