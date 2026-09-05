@@ -20,19 +20,22 @@ async def search_all(
     types: list[ResourceType] | None,
     config: AppConfig,
     enrich: bool = True,
+    per_source_limit: int | None = None,
 ) -> tuple[dict[str, list[Resource]], list[dict[str, str]]]:
     """并发搜索所有源.
 
     返回 (按类型分组的结果, 失败源列表)。单源失败/超时不影响其他源.
+    per_source_limit: 覆盖 config.search.per_source_limit（深度搜索时用）.
     """
     errors: list[dict[str, str]] = []
     raw: list[Resource] = []
     deadline = config.search.deadline
+    limit = per_source_limit or config.search.per_source_limit
 
     async def run_one(provider: BaseProvider) -> None:
         try:
             resources = await asyncio.wait_for(
-                provider.search(keyword, config.search.per_source_limit),
+                provider.search(keyword, limit),
                 timeout=deadline,
             )
             # 按请求的类型过滤

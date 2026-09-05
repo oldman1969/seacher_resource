@@ -22,6 +22,7 @@ async def search(
     types: str | None = Query(None, description="逗号分隔: video,book,audio,netdisk_share,magnet"),
     enrich: bool = Query(True, description="是否对 top N 补付费元数据"),
     probe_top: bool = Query(True, description="是否自动探测每类型 top N 可用性"),
+    depth: bool = Query(False, description="深度搜索：每源上限提升到 depth_limit（默认 2000）"),
 ) -> SearchResponse:
     state = _get_state(request)
     if not q.strip():
@@ -35,7 +36,7 @@ async def search(
             raise HTTPException(422, f"非法类型: {exc}") from exc
 
     start = time.monotonic()
-    grouped, errors = await state.aggregator_search(q.strip(), type_list, enrich)
+    grouped, errors = await state.aggregator_search(q.strip(), type_list, enrich, depth)
     elapsed = int((time.monotonic() - start) * 1000)
 
     if probe_top and state.probe_engine:

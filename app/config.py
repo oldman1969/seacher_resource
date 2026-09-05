@@ -43,6 +43,7 @@ class ProbeConfig(BaseModel):
 class SearchConfig(BaseModel):
     deadline: float = 8.0             # 单源整体超时(秒)
     per_source_limit: int = 100       # 每源返回条数上限
+    depth_limit: int = 2000           # 深度搜索时的每源返回条数上限
     enrich_top: int = 10              # 每类型 enrich 的条数
 
 

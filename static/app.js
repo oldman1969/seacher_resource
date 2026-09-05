@@ -22,8 +22,13 @@ const goEl = document.getElementById("go");
 const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 const freeOnlyEl = document.getElementById("freeOnly");
+const depthEl = document.getElementById("depth");
+const panFiltersEl = document.getElementById("panFilters");
 
-let lastData = null; // 供「仅看免费」过滤时重渲染
+const PAGE_SIZE = 50;          // 每页条数
+let lastData = null;           // 供「仅看免费」/「网盘过滤」重渲染
+let panTypeFilter = null;      // 网盘类型过滤：null=全部，否则为具体 pan_type
+let pageState = {};            // { [type]: 当前页码 }
 
 kwEl.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
 goEl.addEventListener("click", doSearch);
@@ -41,14 +46,17 @@ async function doSearch() {
   if (!types.length) { statusEl.textContent = "请至少选择一种资源类型"; return; }
 
   goEl.disabled = true;
-  statusEl.textContent = "搜索中…";
+  statusEl.textContent = depthEl.checked ? "深度搜索中（结果上限 2000，可能较慢）…" : "搜索中…";
   resultsEl.innerHTML = '<div class="loading">正在并发查询各数据源…</div>';
 
   try {
-    const resp = await fetch(`/api/search?q=${encodeURIComponent(q)}&types=${types.join(",")}`);
+    const url = `/api/search?q=${encodeURIComponent(q)}&types=${types.join(",")}&depth=${depthEl.checked}`;
+    const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     lastData = data;
+    panTypeFilter = null;   // 重置网盘过滤
+    pageState = {};         // 重置分页
     statusEl.innerHTML =
       `耗时 ${data.elapsed_ms} ms` +
       (data.errors.length
@@ -64,29 +72,93 @@ async function doSearch() {
 }
 
 function render(data) {
-  resultsEl.innerHTML = "";
   if (!data) return;
+  resultsEl.innerHTML = "";
   const freeOnly = freeOnlyEl.checked;
+
+  // 1. 网盘来源过滤条（仅当有网盘结果时）
+  renderPanFilters(data);
+
   let total = 0;
 
   for (const [type, items] of Object.entries(data.results)) {
-    const shown = freeOnly ? items.filter((r) => r.payment === "free") : items;
+    let shown = freeOnly ? items.filter((r) => r.payment === "free") : items;
+    // 网盘类型过滤（只作用于 netdisk_share）
+    if (type === "netdisk_share" && panTypeFilter) {
+      shown = shown.filter((r) => r.pan_type === panTypeFilter);
+    }
     if (!shown.length) continue;
     total += shown.length;
 
     const group = document.createElement("div");
     group.className = "group";
     group.innerHTML = `<h2>${TYPE_LABEL[type] || type}<span class="count">${shown.length} 条</span></h2>`;
+
+    // 组内分页
+    const totalPages = Math.ceil(shown.length / PAGE_SIZE);
+    const page = Math.min(pageState[type] || 0, totalPages - 1);
+    const pageItems = shown.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
     const cards = document.createElement("div");
     cards.className = "cards";
-    shown.forEach((r) => cards.appendChild(renderCard(r)));
+    pageItems.forEach((r) => cards.appendChild(renderCard(r)));
     group.appendChild(cards);
+
+    if (totalPages > 1) group.appendChild(makePager(type, page, totalPages));
     resultsEl.appendChild(group);
   }
 
   if (!total) {
     resultsEl.innerHTML = '<div class="empty">没有找到相关资源，换个关键词试试？</div>';
   }
+}
+
+function renderPanFilters(data) {
+  panFiltersEl.innerHTML = "";
+  const netdisk = data.results.netdisk_share || [];
+  const panTypes = [...new Set(netdisk.map((r) => r.pan_type).filter(Boolean))];
+  if (!panTypes.length) return;
+
+  const wrap = document.createElement("div");
+  wrap.className = "pan-filter-label";
+  wrap.textContent = "网盘来源：";
+
+  const all = document.createElement("button");
+  all.className = "pan-chip" + (panTypeFilter === null ? " active" : "");
+  all.textContent = "全部";
+  all.onclick = () => { panTypeFilter = null; render(lastData); };
+  wrap.appendChild(all);
+
+  for (const t of panTypes) {
+    const chip = document.createElement("button");
+    chip.className = "pan-chip" + (panTypeFilter === t ? " active" : "");
+    chip.textContent = PAN_LABEL[t] || t;
+    chip.onclick = () => { panTypeFilter = t; render(lastData); };
+    wrap.appendChild(chip);
+  }
+  panFiltersEl.appendChild(wrap);
+}
+
+function makePager(type, page, totalPages) {
+  const pager = document.createElement("div");
+  pager.className = "pager";
+
+  const prev = document.createElement("button");
+  prev.textContent = "‹ 上一页";
+  prev.disabled = page === 0;
+  prev.onclick = () => { pageState[type] = page - 1; render(lastData); };
+
+  const info = document.createElement("span");
+  info.className = "pager-info";
+  info.textContent = `${page + 1} / ${totalPages}`;
+
+  const next = document.createElement("button");
+  next.textContent = "下一页 ›";
+  next.disabled = page >= totalPages - 1;
+  next.onclick = () => { pageState[type] = page + 1; render(lastData); };
+
+  pager.append(prev, info, next);
+  return pager;
 }
 
 function renderCard(r) {

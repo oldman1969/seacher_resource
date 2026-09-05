@@ -44,13 +44,17 @@ async def lifespan(app: FastAPI):
         keyword: str,
         types: list[ResourceType] | None,
         enrich: bool = True,
+        depth: bool = False,
     ):
         # 每次搜索前热加载配置（增删源无需重启）
         cfg = load_config()
         if _config_changed(cfg, app.state.config):
             app.state.providers = build_providers(cfg, client)
             app.state.config = cfg
-        return await search_all(app.state.providers, keyword, types, cfg, enrich)
+        limit = cfg.search.depth_limit if depth else cfg.search.per_source_limit
+        return await search_all(
+            app.state.providers, keyword, types, cfg, enrich, limit
+        )
 
     async def auto_probe(grouped: dict[str, list]) -> None:
         """搜索后自动探测每类型 top N（磁力跳过）."""
