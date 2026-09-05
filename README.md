@@ -24,20 +24,26 @@ uvicorn app.main:app --port 8000
 无 `config.yaml` 时使用内置默认配置（中文源开启，国际源关闭）。复制 `config.example.yaml`
 为 `config.yaml` 可自定义源开关、代理、限流参数——**改配置无需重启**（每次搜索热加载）。
 
+### 访问密码（可选）
+
+复制 `.env.example` 为 `.env`，设置 `ACCESS_PASSWORD=你的密码` 后，访问站点会先进入一个
+只有密码框的登录页，输入正确密码后种 cookie 进入。留空则无密码（本地开发默认）。
+
 ## 数据源
 
-| 源 | 类型 | 接入方式 | 付费判定 | 默认 |
-|---|---|---|---|---|
-| Bilibili | 视频 | 游客态 wbi 签名 API | pay badge + view 详情（充电专属/付费） | 开 |
-| 网易云音乐 | 音频 | web 搜索接口（免登录） | `fee` 字段（0/8=免费, 1=VIP, 4=购买） | 开 |
-| 豆瓣 | 影视/书 | suggest 接口（限流敏感，≥2s 间隔） | 目录站，恒 unknown | 开 |
-| PanSou | 网盘/磁力 | 自托管容器 API（需部署） | 分享链接，恒 free | 开* |
-| Internet Archive | 视频/音频/书 | 官方 API | 恒 free | 关† |
-| Open Library | 书 | 官方 API | public=免费, borrowable=可借阅 | 关† |
-| Gutenberg / LibriVox | 书 / 有声书 | 公开 API | 恒 free | 关† |
+| 源 | 区域 | 类型 | 接入方式 | 付费判定 | 默认 |
+|---|---|---|---|---|---|
+| Bilibili | 国内 | 视频 | 游客态 wbi 签名 API | pay badge + view 详情（充电专属/付费） | 开 |
+| 网易云音乐 | 国内 | 音频 | web 搜索接口（免登录） | `fee` 字段（0/8=免费, 1=VIP, 4=购买） | 开 |
+| 豆瓣 | 国内 | 影视/书 | suggest 接口（限流敏感，≥2s 间隔） | 目录站，恒 unknown | 开 |
+| PanSou | 国内（自托管） | 网盘/磁力 | 自托管容器 API（需部署） | 分享链接，恒 free | 开* |
+| Internet Archive | 国外 | 视频/音频/书 | 官方 API | 恒 free | 关† |
+| Open Library | 国外 | 书 | 官方 API | public=免费, borrowable=可借阅 | 关† |
+| Gutenberg | 国外 | 书 | gutenberg.org 目录搜索 | 恒 free | 关† |
+| LibriVox | 国外 | 有声书 | archive.org 检索（librivoxaudio） | 恒 free | 关† |
 
 \* PanSou 未部署时自动降级（该源报错，不影响其他源）。
-† 当前网络环境直连超时（Phase 0 实测），在 `config.yaml` 配 `proxy:` 后启用。
+† 国际源为 on-demand：在 `config.yaml` 配 `proxy:` 后，前端勾选「国际源」才按需查询（默认不查）。
 
 ## 部署 PanSou（网盘/磁力搜索）
 

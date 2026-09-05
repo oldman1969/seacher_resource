@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.aggregator import search_all
 from app.api.routes import router
+from app.auth import AuthMiddleware, auth_router
 from app.config import load_config
 from app.models import AvailabilityStatus, ResourceType
 from app.probe import ProbeEngine
@@ -30,8 +31,8 @@ async def lifespan(app: FastAPI):
     providers = build_providers(config, client)
     probe_engine = ProbeEngine(config.probe)
 
-    enabled = [p.name for p in providers]
-    logger.info("启用数据源: %s", enabled or "(无)")
+    loaded = [p.name for p in providers]
+    logger.info("已加载数据源: %s", loaded or "(无)")
 
     # ---- 挂到 app.state，路由直接访问 ----
     app.state.client = client
@@ -45,15 +46,20 @@ async def lifespan(app: FastAPI):
         types: list[ResourceType] | None,
         enrich: bool = True,
         depth: bool = False,
+        include_intl: bool = False,
     ):
         # 每次搜索前热加载配置（增删源无需重启）
         cfg = load_config()
         if _config_changed(cfg, app.state.config):
             app.state.providers = build_providers(cfg, client)
             app.state.config = cfg
+        providers = app.state.providers
+        if not include_intl:
+            # 按需源（国际源）默认不参与，除非请求显式包含
+            providers = [p for p in providers if not p.on_demand]
         limit = cfg.search.depth_limit if depth else cfg.search.per_source_limit
         return await search_all(
-            app.state.providers, keyword, types, cfg, enrich, limit
+            providers, keyword, types, cfg, enrich, limit
         )
 
     async def auto_probe(grouped: dict[str, list]) -> None:
@@ -88,7 +94,9 @@ def _config_changed(new, old) -> bool:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="全网资源聚合搜索", version="0.1.0", lifespan=lifespan)
+    app.add_middleware(AuthMiddleware)
     app.include_router(router)
+    app.include_router(auth_router)
     if STATIC_DIR.exists():
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
     return app

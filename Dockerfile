@@ -6,7 +6,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir \
     "fastapi>=0.110" \
     "uvicorn[standard]>=0.29" \
-    "httpx[http2]>=0.27" \
+    "httpx[http2,socks]>=0.27" \
     "pydantic>=2.7" \
     "pydantic-settings>=2.3" \
     "python-dotenv>=1.0" \

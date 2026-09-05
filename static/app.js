@@ -23,6 +23,7 @@ const statusEl = document.getElementById("status");
 const resultsEl = document.getElementById("results");
 const freeOnlyEl = document.getElementById("freeOnly");
 const depthEl = document.getElementById("depth");
+const intlEl = document.getElementById("intl");
 const panFiltersEl = document.getElementById("panFilters");
 
 const PAGE_SIZE = 50;          // 每页条数
@@ -50,7 +51,7 @@ async function doSearch() {
   resultsEl.innerHTML = '<div class="loading">正在并发查询各数据源…</div>';
 
   try {
-    const url = `/api/search?q=${encodeURIComponent(q)}&types=${types.join(",")}&depth=${depthEl.checked}`;
+    const url = `/api/search?q=${encodeURIComponent(q)}&types=${types.join(",")}&depth=${depthEl.checked}&include_intl=${intlEl.checked}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();

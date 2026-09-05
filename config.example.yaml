@@ -13,7 +13,8 @@ providers:
     enabled: true
     base_url: http://127.0.0.1:8888                 # docker-compose 部署时用 http://pansou:8888
 
-  # ---- 国际源：当前网络直连不可达，配 proxy 后启用 ----
+  # ---- 国际源：由前端「国际源」勾选控制（on-demand），本地需配 proxy 才可达 ----
+  # 勾选后才按请求查询；enabled 字段对国际源无效（始终可被勾选）。
   internet_archive: { enabled: false }
   openlibrary: { enabled: false }
   gutenberg: { enabled: false }

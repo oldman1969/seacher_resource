@@ -21,7 +21,9 @@ def _register_all() -> None:
         return
     from app.providers.bilibili import BilibiliProvider
     from app.providers.douban import DoubanProvider
+    from app.providers.gutenberg import GutenbergProvider
     from app.providers.internet_archive import InternetArchiveProvider
+    from app.providers.librivox import LibriVoxProvider
     from app.providers.netease import NeteaseProvider
     from app.providers.openlibrary import OpenLibraryProvider
     from app.providers.pansou import PanSouProvider
@@ -33,6 +35,8 @@ def _register_all() -> None:
         PanSouProvider,
         InternetArchiveProvider,
         OpenLibraryProvider,
+        GutenbergProvider,
+        LibriVoxProvider,
     ):
         PROVIDERS[cls.name] = cls
 
@@ -45,15 +49,20 @@ def get_provider_classes() -> dict[str, type[BaseProvider]]:
 def build_providers(
     config: AppConfig, client: AsyncClient
 ) -> list[BaseProvider]:
-    """按配置实例化启用的 Provider（实例化失败的源跳过并记录）."""
+    """实例化 Provider（实例化失败的源跳过并记录）.
+
+    普通源按 config 的 enabled 开关实例化；on_demand 源（国际源）无视 enabled
+    始终实例化，由搜索请求按需注入（前端「国际源」勾选控制）。
+    """
     _register_all()
     instances: list[BaseProvider] = []
     for name, pconf in config.providers.items():
-        if not pconf.enabled:
-            continue
         cls = PROVIDERS.get(name)
         if cls is None:
-            logger.warning("未知 provider: %s", name)
+            if pconf.enabled:
+                logger.warning("未知 provider: %s", name)
+            continue
+        if not pconf.enabled and not cls.on_demand:
             continue
         merged = ProviderConfig(
             enabled=True,
@@ -73,12 +82,14 @@ def provider_infos(config: AppConfig) -> list[ProviderInfo]:
     infos: list[ProviderInfo] = []
     for name, cls in PROVIDERS.items():
         pconf = config.providers.get(name)
-        enabled = bool(pconf and pconf.enabled)
+        on_demand = cls.on_demand
+        enabled = bool(pconf and pconf.enabled) or on_demand
+        status = "on_demand" if on_demand else ("ok" if enabled else "disabled")
         infos.append(ProviderInfo(
             name=name,
             enabled=enabled,
             supported_types=list(cls.supported_types),
-            status="ok" if enabled else "disabled",
+            status=status,
         ))
     return infos
 

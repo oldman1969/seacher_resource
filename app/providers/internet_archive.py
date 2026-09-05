@@ -24,6 +24,7 @@ class InternetArchiveProvider(BaseProvider):
     supported_types = (ResourceType.video, ResourceType.audio, ResourceType.book)
     enabled_by_default = False
     requires_proxy = True
+    on_demand = True
 
     async def search(self, keyword: str, limit: int = 10) -> list[Resource]:
         try:

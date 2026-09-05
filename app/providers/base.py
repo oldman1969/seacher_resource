@@ -24,6 +24,7 @@ class BaseProvider(ABC):
     supported_types: tuple[ResourceType, ...] = ()
     enabled_by_default: bool = False
     requires_proxy: bool = False    # 网络不可直连的国际源标记
+    on_demand: bool = False         # 按需源（如国际源）：默认不参与搜索，前端勾选后按请求注入
 
     def __init__(self, client: AsyncClient, config: ProviderConfig):
         self.client = client
