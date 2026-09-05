@@ -1,0 +1,14 @@
+# 构建上下文排除（refer/ 含密钥，绝不能进镜像或上传）
+.git
+.gitignore
+.env
+config.yaml
+refer/
+tests/
+scripts/
+*.md
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv/
