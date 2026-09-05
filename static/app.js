@@ -238,6 +238,20 @@ function renderCard(r) {
     tags.appendChild(pwd);
   }
 
+  // 磁力链接：复制按钮（magnet: 协议浏览器无法直接打开）
+  if (r.type === "magnet") {
+    const copy = document.createElement("span");
+    copy.className = "pwd-chip";
+    copy.textContent = "复制磁力链接 📋";
+    copy.title = "点击复制 magnet 链接，粘贴到迅雷/qBittorrent 等下载工具";
+    copy.onclick = () => {
+      navigator.clipboard?.writeText(r.url);
+      copy.textContent = "已复制 ✓";
+      setTimeout(() => { copy.textContent = "复制磁力链接 📋"; }, 1500);
+    };
+    tags.appendChild(copy);
+  }
+
   // 可用性（未验证可点击实时探测）
   const avail = document.createElement("span");
   avail.className = `avail avail-${r.availability}`;
