@@ -15,11 +15,12 @@
 6. [第 3 步：本地验证](#第-3-步本地验证)
 7. [第 4 步：cloudflared 加 ingress + DNS](#第-4-步cloudflared-加-ingress--dns)
 8. [第 5 步：公网验证](#第-5-步公网验证)
-9. [日常运维](#日常运维)
-10. [安全说明](#安全说明)
-11. [常见问题](#常见问题)
-12. [速查表](#速查表)
-13. [附录：从零部署（新服务器）](#附录从零部署新服务器)
+9. [更新已部署服务（升级）](#更新已部署服务升级)
+10. [日常运维](#日常运维)
+11. [安全说明](#安全说明)
+12. [常见问题](#常见问题)
+13. [速查表](#速查表)
+14. [附录：从零部署（新服务器）](#附录从零部署新服务器)
 
 ---
 
@@ -294,6 +295,44 @@ curl -s -o /dev/null -w "%{http_code}\n" "https://seacher.renzhengfeng.top/api/s
 ```
 
 浏览器打开 `https://seacher.renzhengfeng.top`：先进入只有密码框的登录页，输入 `ACCESS_PASSWORD` 后进入，搜「三体」能出分组结果即成功。
+
+---
+
+## 更新已部署服务（升级）
+
+本地代码更新后，重新部署到服务器的完整流程（三步）：
+
+### 1. 本地提交推送
+
+```bash
+git add -A
+git commit -m "描述本次改动"
+git push
+```
+
+### 2. 服务器拉取 + 重建
+
+```bash
+cd ~/seacher_resource
+git pull                       # 拉最新代码
+docker compose up -d --build   # 重新构建 app 镜像（代码变了）
+docker compose ps              # 确认 app / pansou 都 Up
+```
+
+### 3. 补新增的 `.env` 配置（仅当新功能引入新配置项时）
+
+对比 `.env.example`，把新增的键补到服务器 `~/seacher_resource/.env`，然后：
+
+```bash
+docker compose restart
+```
+
+例如本次升级新增了 `ADMIN_PASSWORD`（管理密码）和 `ZHIHU_COOKIE`（知乎 cookie）。
+
+> **注意**：
+> - `config.yaml` / `.env` 是 gitignore，`git pull` **不会覆盖**它们，服务器本地配置保留。
+> - 知乎 cookie 换 IP 可能失效：若升级后知乎报 401/403，重新登录知乎复制 `z_c0` 更新到 `.env`。
+> - 只有代码变了才需 `--build` 重建镜像；只改 `config.yaml` / `.env` 用 `docker compose restart` 即可（config.yaml 甚至无需重启，每次搜索热加载）。
 
 ---
 
