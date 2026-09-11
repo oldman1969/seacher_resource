@@ -111,6 +111,10 @@ providers:
   openlibrary: { enabled: false }
   gutenberg: { enabled: false }
   librivox: { enabled: false }
+  # ---- 知乎/微信：on-demand，前端「知乎/微信」勾选才查（无需在此配置）----
+  # 知乎读 .env 的 ZHIHU_COOKIE；微信走搜狗，免配置
+  zhihu: { enabled: false }
+  wechat: { enabled: false }
   ximalaya: { enabled: false }
   youtube: { enabled: false }                       # 需 YOUTUBE_API_KEY + 代理
   spotify: { enabled: false }                       # 需 SPOTIFY_* + 代理
@@ -136,12 +140,19 @@ EOF
 > **关于国际源**：`internet_archive` / `openlibrary` 是 on-demand 源，由前端「国际源」勾选控制，这里的 `enabled` 不用管。服务器没有代理，勾选后也会超时，所以**保持不勾选**；本地开发才配 `proxy:` 并勾选。
 
 ### 1.2 写 `.env`（可空，但文件必须存在）
-compose 把它绑定挂载到 `/app/.env`。若宿主上这个文件不存在，Docker 会误创建成**目录**导致启动异常。先创建（敏感项全留空即可，只有 B 站被风控 / 启用国际源才需要填）：
+compose 把它绑定挂载到 `/app/.env`。若宿主上这个文件不存在，Docker 会误创建成**目录**导致启动异常。先创建：
 
 ```bash
 cat > .env <<'EOF'
 # 站点访问密码：留空则无密码；设置后访问先过密码页（仅密码，无用户名）
 ACCESS_PASSWORD=换成你的密码
+
+# 管理密码（右上角 ⚙ 设置面板用，与站点访问密码相互独立）：留空则设置面板锁定
+ADMIN_PASSWORD=换成你的管理密码
+
+# 知乎搜索登录态（浏览器登录 zhihu.com → F12 → Application → Cookies → 复制 z_c0 的值）
+# 注意：知乎 cookie 换 IP 使用可能失效，服务器环境需重新登录知乎复制一次
+ZHIHU_COOKIE=
 
 # 敏感配置（可选）
 BILI_SESSDATA=
@@ -313,14 +324,23 @@ sudo journalctl -u cloudflared -f
 ---
 
 ## 安全说明
-本项目通过 **访问密码** 做认证：`.env` 里设 `ACCESS_PASSWORD=你的密码` 后，访问站点会先进入一个只有密码框的登录页，输入正确密码后种一个 HttpOnly 签名 cookie（默认 30 天），之后页面与 `/api/*`、`/docs` 都凭该 cookie 访问；密码留空则无鉴权（本地开发默认）。
+本项目有两个**相互独立**的密码（都在 `.env`）：
+
+| 密码 | 控制什么 | 留空时 |
+|---|---|---|
+| `ACCESS_PASSWORD` | 谁能**访问站点**（搜索功能） | 站点开放浏览（无鉴权） |
+| `ADMIN_PASSWORD` | 谁能**改配置**（右上角 ⚙ 设置面板，如更新知乎 cookie） | 设置面板锁定 |
+
+**站点访问密码**：设 `ACCESS_PASSWORD=你的密码` 后，访问站点会先进入只有密码框的登录页，输入正确密码后种 HttpOnly 签名 cookie（默认 30 天），之后页面与 `/api/*`、`/docs` 都凭该 cookie 访问。
 
 - 密码只用于本地比对 + 给 cookie 签名，不存 cookie、不落盘；公网段走 Cloudflare 边缘 HTTPS 加密。
 - **改密码**：编辑 `~/seacher_resource/.env` 的 `ACCESS_PASSWORD`，然后 `docker compose restart`（改密码会使旧 cookie 签名失效，需重新登录）。
 - **退出登录**：`POST /auth/logout` 清 cookie（前端暂未做退出按钮，可手动 curl 或清浏览器 cookie）。
 - 想更严格（多用户 / 邮箱登录 / 二步验证），可再叠加 **Cloudflare Access**（Zero Trust → Access → Application，把 `seacher.renzhengfeng.top` 套一层），与本密码页互不冲突。
 
-> 注意本项目 `.env` 里的 B 站 SESSDATA / YouTube / Spotify 等**属于你的私有凭证**，填写后即意味着「能通过密码认证的人都能通过这个搜索服务间接使用它们」。非必要保持留空。
+**管理密码**：设 `ADMIN_PASSWORD=你的密码` 后，点右上角 ⚙ 需先验证管理密码（种 2 小时 admin cookie），通过后才能改配置（当前仅「知乎 cookie」一项，未来可扩展）。管理 cookie **只放行 `/api/admin/*`**，不能访问站点内容——权限不放大。留空则设置面板显示「管理功能未启用」。
+
+> 注意本项目 `.env` 里的 B 站 SESSDATA / 知乎 z_c0 / YouTube / Spotify 等**属于你的私有凭证**，填写后即意味着「能通过密码认证的人都能通过这个搜索服务间接使用它们」。非必要保持留空。
 
 ---
 
@@ -329,6 +349,8 @@ sudo journalctl -u cloudflared -f
 - **首搜网盘 0 条**：PanSou 异步模式（4s 快速响应 + 后台补全缓存），隔几秒再搜同一关键词即有结果。
 - **网盘结果全是插件源、没有 TG 频道源**：TG 需代理，腾讯云直连被墙。有 socks5 代理时给 pansou 加 `PROXY=socks5://host.containers.internal:7890` 并换官方完整 TG 频道清单。
 - **豆瓣/百度频被风控**：config.yaml 已设 `baidu_min_interval: 2.0`、每域名并发 2；不要调太高并发。
+- **知乎报「无法获取 d_c0 / 401 / 403」**：知乎对服务器 IP 有风控，且 cookie 换 IP 可能失效。确认 `.env` 的 `ZHIHU_COOKIE` 是最新复制的 `z_c0`；若持续 403 说明 IP 被短期风控，等几小时解封，期间可只测微信/网盘。
+- **微信报「搜狗冷却中」**：搜狗反爬，翻页触发验证码后进入 10 分钟冷却，期间自动降级；稍后自动恢复。翻页节流已做随机 2~4s。
 - **改 config.yaml 不生效**：确认改的是服务器上的 `~/seacher_resource/config.yaml`（挂载进容器的那个），且没有语法错误（每次搜索热加载，失败会落到默认/上次值）。
 
 ---
@@ -343,7 +365,7 @@ sudo journalctl -u cloudflared -f
 | PanSou 宿主机端口 | 8888（容器内 8888，仅调试） |
 | app → pansou | http://pansou:8888（容器内网） |
 | 复用隧道 ID | <你的隧道ID> |
-| 鉴权 | 密码页 + 签名 cookie（`.env` 的 `ACCESS_PASSWORD`，留空则无） |
+| 鉴权 | 站点密码 `ACCESS_PASSWORD`（留空则开放浏览）+ 管理密码 `ADMIN_PASSWORD`（留空则设置面板锁定） |
 
 ---
 

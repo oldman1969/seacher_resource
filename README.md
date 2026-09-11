@@ -1,6 +1,6 @@
 # 全网资源聚合搜索（seacher_resource）
 
-一次搜索，并发查询**书籍 / 视频 / 音频 / 网盘分享 / 磁力链接**等多类资源；
+一次搜索，并发查询**书籍 / 视频 / 音频 / 文章 / 网盘分享 / 磁力链接**等多类资源；
 每个结果标注**是否可用**（链接有效、资源存在）与**是否付费**（免费 / VIP / 单次付费）。
 
 > ⚠️ **免责声明**：本项目仅供个人学习研究。不存储、不缓存任何资源文件本体，仅实时检索
@@ -24,10 +24,12 @@ uvicorn app.main:app --port 8000
 无 `config.yaml` 时使用内置默认配置（中文源开启，国际源关闭）。复制 `config.example.yaml`
 为 `config.yaml` 可自定义源开关、代理、限流参数——**改配置无需重启**（每次搜索热加载）。
 
-### 访问密码（可选）
+### 密码（可选）
 
-复制 `.env.example` 为 `.env`，设置 `ACCESS_PASSWORD=你的密码` 后，访问站点会先进入一个
-只有密码框的登录页，输入正确密码后种 cookie 进入。留空则无密码（本地开发默认）。
+复制 `.env.example` 为 `.env`，两个密码相互独立：
+
+- `ACCESS_PASSWORD=站点访问密码` —— 设置后访问站点先过密码页；留空则开放浏览
+- `ADMIN_PASSWORD=管理密码` —— 设置后，点右上角 ⚙ 设置面板需先验证此密码；留空则设置面板锁定
 
 ## 数据源
 
@@ -37,6 +39,8 @@ uvicorn app.main:app --port 8000
 | 网易云音乐 | 国内 | 音频 | web 搜索接口（免登录） | `fee` 字段（0/8=免费, 1=VIP, 4=购买） | 开 |
 | 豆瓣 | 国内 | 影视/书 | suggest 接口（限流敏感，≥2s 间隔） | 目录站，恒 unknown | 开 |
 | PanSou | 国内（自托管） | 网盘/磁力 | 自托管容器 API（需部署） | 分享链接，恒 free | 开* |
+| 知乎 | 国内 | 文章/回答 | search_v3 + x-zse-96 签名（需 `z_c0` 登录态） | 免费 / 盐选付费 | 关‡ |
+| 微信 | 国内（搜狗） | 公众号文章 | 搜狗微信搜索（免登录，翻页抓取） | 恒 free | 关‡ |
 | Internet Archive | 国外 | 视频/音频/书 | 官方 API | 恒 free | 关† |
 | Open Library | 国外 | 书 | 官方 API | public=免费, borrowable=可借阅 | 关† |
 | Gutenberg | 国外 | 书 | gutenberg.org 目录搜索 | 恒 free | 关† |
@@ -44,6 +48,18 @@ uvicorn app.main:app --port 8000
 
 \* PanSou 未部署时自动降级（该源报错，不影响其他源）。
 † 国际源为 on-demand：在 `config.yaml` 配 `proxy:` 后，前端勾选「国际源」才按需查询（默认不查）。
+‡ 知乎/微信为 on-demand：前端勾选「知乎/微信」才按需查询；知乎需在 `.env` 配 `ZHIHU_COOKIE`（见下）。
+
+## 知乎搜索配置
+
+知乎搜索接口强制登录态，需在 `.env` 配置 `ZHIHU_COOKIE`（只需 `z_c0` 一个值，`d_c0` 会自动获取）：
+
+1. 浏览器登录 [zhihu.com](https://www.zhihu.com)
+2. `F12` → Application → Cookies → `www.zhihu.com` → 复制 `z_c0` 的值
+3. 粘贴到 `.env`：`ZHIHU_COOKIE=2|1:0|...`（纯值或完整 cookie 均可）
+
+也可直接在网页右上角 ⚙ 设置面板粘贴（需先配 `ADMIN_PASSWORD`）。`z_c0` 有效期约 30 天，
+失效时重新登录复制一次即可。注意：知乎 cookie 换 IP（如服务器）使用可能触发安全验证。
 
 ## 部署 PanSou（网盘/磁力搜索）
 
@@ -66,9 +82,11 @@ podman run -d --name pansou -p 8888:8888 -e "CHANNELS=tgsearchers6" -e "ENABLED_
 
 | 端点 | 说明 |
 |---|---|
-| `GET /api/search?q=三体&types=video,audio,book,netdisk_share,magnet` | 聚合搜索，返回分组结果 + 失败源列表 |
+| `GET /api/search?q=三体&types=video,audio,book,article,netdisk_share,magnet` | 聚合搜索；`depth=true` 深度搜索、`include_intl=true` 含国际源、`include_social=true` 含知乎/微信 |
 | `POST /api/probe` `{resource_id, url, source, pan_type, type}` | 单条实时可用性探测 |
 | `GET /api/providers` | 各源启用状态 |
+| `POST /api/admin/auth` `{password}` | 管理密码验证（种 2 小时 admin cookie） |
+| `GET/POST /api/admin/zhihu-cookie` | 查看状态 / 更新知乎 cookie（网页设置面板用，需 admin 验证） |
 
 交互式文档：`http://127.0.0.1:8000/docs`
 
@@ -84,7 +102,7 @@ podman run -d --name pansou -p 8888:8888 -e "CHANNELS=tgsearchers6" -e "ENABLED_
 ## 开发
 
 ```bash
-python -m pytest tests/ -q          # 单测（31 个，respx mock 不依赖真网）
+python -m pytest tests/ -q          # 单测（50 个，respx mock 不依赖真网）
 python scripts/probe_sources.py     # Phase 0 端点实测（决定源可用性）
 python scripts/smoke.py             # 端到端冒烟
 ```
