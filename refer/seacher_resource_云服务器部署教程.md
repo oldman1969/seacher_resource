@@ -151,8 +151,9 @@ ACCESS_PASSWORD=换成你的密码
 # 管理密码（右上角 ⚙ 设置面板用，与站点访问密码相互独立）：留空则设置面板锁定
 ADMIN_PASSWORD=换成你的管理密码
 
-# 知乎搜索登录态（浏览器登录 zhihu.com → F12 → Application → Cookies → 复制 z_c0 的值）
-# 注意：知乎 cookie 换 IP 使用可能失效，服务器环境需重新登录知乎复制一次
+# 知乎搜索登录态：在你自己的电脑浏览器登录 zhihu.com → F12 → Application → Cookies → 复制 z_c0 的值
+# 注意：cookie 换 IP 使用可能被知乎风控失效；失效时在你电脑重新登录知乎复制新值，
+# 通过网站右上角 ⚙ 设置面板粘贴更新（无需 SSH 上服务器，服务器也无需登录知乎）
 ZHIHU_COOKIE=
 
 # 敏感配置（可选）
@@ -331,7 +332,7 @@ docker compose restart
 
 > **注意**：
 > - `config.yaml` / `.env` 是 gitignore，`git pull` **不会覆盖**它们，服务器本地配置保留。
-> - 知乎 cookie 换 IP 可能失效：若升级后知乎报 401/403，重新登录知乎复制 `z_c0` 更新到 `.env`。
+> - 知乎 cookie 换 IP 可能失效：若升级后知乎报 401/403，在你自己的电脑浏览器重新登录知乎复制新的 `z_c0`，通过网站右上角 ⚙ 设置面板粘贴更新（无需 SSH、无需服务器登录知乎）。
 > - 只有代码变了才需 `--build` 重建镜像；只改 `config.yaml` / `.env` 用 `docker compose restart` 即可（config.yaml 甚至无需重启，每次搜索热加载）。
 
 ---

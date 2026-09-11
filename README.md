@@ -52,14 +52,14 @@ uvicorn app.main:app --port 8000
 
 ## 知乎搜索配置
 
-知乎搜索接口强制登录态，需在 `.env` 配置 `ZHIHU_COOKIE`（只需 `z_c0` 一个值，`d_c0` 会自动获取）：
+知乎搜索接口强制登录态，需配置 `ZHIHU_COOKIE`（只需 `z_c0` 一个值，`d_c0` 会自动获取）。
 
-1. 浏览器登录 [zhihu.com](https://www.zhihu.com)
-2. `F12` → Application → Cookies → `www.zhihu.com` → 复制 `z_c0` 的值
-3. 粘贴到 `.env`：`ZHIHU_COOKIE=2|1:0|...`（纯值或完整 cookie 均可）
+**在你自己的电脑浏览器**登录 [zhihu.com](https://www.zhihu.com)，`F12` → Application → Cookies → `www.zhihu.com` → 复制 `z_c0` 的值，然后二选一写入：
 
-也可直接在网页右上角 ⚙ 设置面板粘贴（需先配 `ADMIN_PASSWORD`）。`z_c0` 有效期约 30 天，
-失效时重新登录复制一次即可。注意：知乎 cookie 换 IP（如服务器）使用可能触发安全验证。
+- 本地：粘贴到 `.env`（`ZHIHU_COOKIE=2|1:0|...`，纯值或完整 cookie 均可）
+- **服务器：无需 SSH、无需在服务器登录知乎**——直接打开网站右上角 ⚙ 设置面板粘贴（需先配 `ADMIN_PASSWORD`），保存即写入服务器 `.env` 并即时生效
+
+`z_c0` 有效期约 30 天，失效时重复「你电脑登录知乎复制 → 设置面板粘贴」即可。注意：cookie 换 IP（如服务器）使用**可能**被知乎风控判异常失效，这是概率性的，不是必然。
 
 ## 部署 PanSou（网盘/磁力搜索）
 
