@@ -186,6 +186,8 @@ EOF
 > 若你服务器的 compose 版本报 `!override` 不识别，直接编辑 `docker-compose.yml` 把两处 `ports` 改成 `"127.0.0.1:8000:8000"` / `"127.0.0.1:8888:8888"` 即可。
 >
 > `pansou` 的宿主机端口映射其实**不是必须的**——app 是通过容器内网 DNS 名 `pansou` 访问它，不经过宿主机。留着 8888 只是为了本地 `curl` 调试方便。
+>
+> `.env` / `config.yaml` 的挂载**继承基础 compose 的 volumes**，本 override 不用管：`.env` 已是**可写**（`./.env:/app/.env`，无 `:ro`）——设置面板保存知乎 cookie 需要写入 `.env`；`config.yaml` 保持只读（只需读、热加载）。若你用的是旧版基础 compose（`.env` 带 `:ro`），需先 `git pull` 或手动去掉 `:ro`，否则设置面板保存 cookie 会 500。
 
 ---
 
