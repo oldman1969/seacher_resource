@@ -9,7 +9,7 @@ services:
       - "8000:8000"
     volumes:
       - ./config.yaml:/app/config.yaml:ro
-      - ./.env:/app/.env:ro
+      - ./.env:/app/.env       # 需可写：设置面板保存知乎 cookie 会写入 .env
     depends_on:
       - pansou
 
