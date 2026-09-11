@@ -20,6 +20,12 @@ providers:
   gutenberg: { enabled: false }
   librivox: { enabled: false }
 
+  # ---- 知乎/微信：由前端「知乎/微信」勾选控制（on-demand）----
+  # zhihu：读 .env 的 ZHIHU_COOKIE（搜索接口强制登录态；cookie 换 IP 可能失效，需偶尔更新）
+  # wechat：搜狗微信搜索搜文章，免登录免 sidecar，零维护（被验证码拦截时自动降级）
+  zhihu: { enabled: false }
+  wechat: { enabled: false }
+
   # ---- 不稳定/实验性 ----
   ximalaya: { enabled: false }                      # 接口软风控，Phase 2
   youtube: { enabled: false }                       # 需 YOUTUBE_API_KEY + 代理

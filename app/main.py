@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from app.aggregator import search_all
 from app.api.routes import router
 from app.auth import AuthMiddleware, auth_router
-from app.config import load_config
+from app.config import PROJECT_ROOT, load_config
 from app.models import AvailabilityStatus, ResourceType
 from app.probe import ProbeEngine
 from app.providers.registry import build_providers, provider_infos
@@ -40,6 +40,7 @@ async def lifespan(app: FastAPI):
     app.state.probe_engine = probe_engine
     app.state.provider_infos = lambda: provider_infos(config)
     app.state.config = config
+    app.state.config_root = PROJECT_ROOT  # 管理端点写 .env 用
 
     async def aggregator_search(
         keyword: str,
@@ -47,16 +48,20 @@ async def lifespan(app: FastAPI):
         enrich: bool = True,
         depth: bool = False,
         include_intl: bool = False,
+        include_social: bool = False,
     ):
         # 每次搜索前热加载配置（增删源无需重启）
         cfg = load_config()
         if _config_changed(cfg, app.state.config):
             app.state.providers = build_providers(cfg, client)
             app.state.config = cfg
-        providers = app.state.providers
-        if not include_intl:
-            # 按需源（国际源）默认不参与，除非请求显式包含
-            providers = [p for p in providers if not p.on_demand]
+        providers = [
+            p
+            for p in app.state.providers
+            if p.group == "default"
+            or (p.group == "intl" and include_intl)
+            or (p.group == "social" and include_social)
+        ]
         limit = cfg.search.depth_limit if depth else cfg.search.per_source_limit
         return await search_all(
             providers, keyword, types, cfg, enrich, limit

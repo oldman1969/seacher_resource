@@ -26,6 +26,7 @@ class ResourceType(str, Enum):
     audio = "audio"                    # 音乐/播客/有声书
     netdisk_share = "netdisk_share"    # 网盘分享链接
     magnet = "magnet"                  # 磁力/ed2k 链接
+    article = "article"                # 文章（知乎回答/文章、公众号等）
 
 
 class PaymentStatus(str, Enum):

@@ -29,7 +29,7 @@ class GutenbergProvider(BaseProvider):
     supported_types = (ResourceType.book,)
     enabled_by_default = False
     requires_proxy = True
-    on_demand = True
+    group = "intl"
 
     async def search(self, keyword: str, limit: int = 10) -> list[Resource]:
         try:

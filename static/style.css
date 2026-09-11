@@ -137,5 +137,61 @@ header h1 { font-size: 26px; letter-spacing: 1px; }
 
 footer { margin-top: 48px; text-align: center; font-size: 12px; color: var(--muted); }
 
+/* 右上角设置按钮 */
+header { position: relative; }
+.settings-btn {
+  position: absolute; top: 0; right: 0;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--card);
+  font-size: 17px; color: var(--muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.settings-btn:hover { color: var(--accent); border-color: var(--accent); transform: rotate(30deg); }
+
+/* 弹窗 */
+.hidden { display: none !important; }
+.modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+.modal-mask { position: absolute; inset: 0; background: rgba(15, 17, 21, .45); }
+.modal-card {
+  position: relative; width: 420px; max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px); overflow-y: auto;
+  background: var(--card); border-radius: 14px; padding: 26px 24px;
+  box-shadow: 0 12px 48px rgba(0,0,0,.22);
+  animation: modal-in .16s ease-out;
+}
+@keyframes modal-in { from { transform: translateY(10px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-close {
+  position: absolute; top: 10px; right: 12px;
+  width: 28px; height: 28px; border: none; background: transparent;
+  font-size: 20px; color: var(--muted); cursor: pointer; border-radius: 6px;
+}
+.modal-close:hover { background: #f0f2f5; color: var(--text); }
+.modal-step h2 { font-size: 17px; margin-bottom: 4px; }
+.modal-hint { font-size: 12.5px; color: var(--muted); line-height: 1.65; margin: 6px 0 10px; }
+.modal-hint a { color: var(--accent); }
+.modal-hint.ok { color: var(--green); }
+.modal-step input[type=password] {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; outline: none;
+}
+.modal-step input[type=password]:focus { border-color: var(--accent); }
+.modal-primary {
+  width: 100%; margin-top: 12px; padding: 10px; border: none; border-radius: 8px;
+  background: var(--accent); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.modal-primary:hover { filter: brightness(1.08); }
+.modal-primary:disabled { opacity: .6; cursor: wait; }
+.modal-err { min-height: 18px; margin-top: 10px; font-size: 13px; color: var(--red); text-align: center; }
+.modal-err.ok-text { color: var(--green); text-align: left; }
+.config-section { margin-top: 6px; }
+.config-section h3 { font-size: 14px; margin: 8px 0 2px; }
+.config-section textarea {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 12px; font-family: monospace; resize: vertical; outline: none;
+}
+.config-section textarea:focus { border-color: var(--accent); }
+.config-section code { background: #f0f2f5; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+
 .loading { text-align: center; padding: 40px; color: var(--muted); }
 .empty { text-align: center; padding: 40px; color: var(--muted); }

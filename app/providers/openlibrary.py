@@ -18,10 +18,12 @@ class OpenLibraryProvider(BaseProvider):
     supported_types = (ResourceType.book,)
     enabled_by_default = False
     requires_proxy = True
-    on_demand = True
+    group = "intl"
 
     async def search(self, keyword: str, limit: int = 10) -> list[Resource]:
         try:
+            # Open Library search.json 的 limit 有上限，钳制到安全范围
+            limit = min(limit, 100)
             resp = await self.client.get(
                 SEARCH_URL,
                 params={"q": keyword, "limit": limit, "fields": FIELDS},

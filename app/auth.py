@@ -25,14 +25,23 @@ from app.config import PROJECT_ROOT
 load_dotenv(PROJECT_ROOT / ".env")
 
 COOKIE_NAME = "seacher_auth"
-_TTL_SECONDS = 60 * 60 * 24 * 30  # cookie 有效期 30 天
-_AUTH_PATHS = {"/auth", "/auth/logout"}
+ADMIN_COOKIE_NAME = "seacher_admin"
+_TTL_SECONDS = 60 * 60 * 24 * 30  # 站点 cookie 有效期 30 天
+_ADMIN_TTL_SECONDS = 2 * 60 * 60  # 管理会话 2 小时
+# 免站点登录的路径：登录端点本身 + 管理密码验证（验证管理密码即管理身份证明）
+_AUTH_PATHS = {"/auth", "/auth/logout", "/api/admin/auth"}
 
 auth_router = APIRouter()
 
 
 def _password() -> str | None:
     pw = os.environ.get("ACCESS_PASSWORD", "").strip()
+    return pw or None
+
+
+def _admin_password() -> str | None:
+    """管理密码（设置面板验证）。独立于站点访问密码；未设置 = 设置功能锁定."""
+    pw = os.environ.get("ADMIN_PASSWORD", "").strip()
     return pw or None
 
 
@@ -46,9 +55,9 @@ def _sign(message: str, password: str) -> bytes:
     ).digest()
 
 
-def _make_token(password: str) -> str:
+def _make_token(password: str, ttl: int = _TTL_SECONDS) -> str:
     """签发 token：`{过期时间}.{HMAC(过期时间)}`，密钥为密码，不落盘、无状态."""
-    exp = str(int(time.time()) + _TTL_SECONDS)
+    exp = str(int(time.time()) + ttl)
     return f"{exp}.{_b64url(_sign(exp, password))}"
 
 
@@ -63,11 +72,22 @@ def _verify_token(token: str, password: str) -> bool:
 
 
 def _is_authenticated(request: Request) -> bool:
+    """站点访问认证：站点 cookie 有效，或（仅限 /api/admin/* 路径）管理 cookie 有效.
+
+    管理 cookie 不能放大为整站访问——ADMIN_PASSWORD 持有者只进设置功能.
+    """
     password = _password()
     if password is None:
         return True
     token = request.cookies.get(COOKIE_NAME)
-    return bool(token) and _verify_token(token, password)
+    if bool(token) and _verify_token(token, password):
+        return True
+    if request.url.path.startswith("/api/admin"):
+        admin_pw = _admin_password()
+        admin_token = request.cookies.get(ADMIN_COOKIE_NAME)
+        if admin_pw and bool(admin_token) and _verify_token(admin_token, admin_pw):
+            return True
+    return False
 
 
 def _is_api(path: str) -> bool:

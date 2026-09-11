@@ -24,7 +24,11 @@ class BaseProvider(ABC):
     supported_types: tuple[ResourceType, ...] = ()
     enabled_by_default: bool = False
     requires_proxy: bool = False    # 网络不可直连的国际源标记
-    on_demand: bool = False         # 按需源（如国际源）：默认不参与搜索，前端勾选后按请求注入
+    # 分组：default=常驻源（按 enabled 开关）；intl=国际源（include_intl 控制）；
+    # social=知乎/微信（include_social 控制）。非 default 为按需源，前端勾选后注入。
+    group: str = "default"
+    # 单源超时（秒）；None = 用聚合器全局 deadline。翻页类源（如微信搜狗）需放宽。
+    deadline: float | None = None
 
     def __init__(self, client: AsyncClient, config: ProviderConfig):
         self.client = client

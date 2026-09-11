@@ -4,10 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>全网资源聚合搜索</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header>
+  <button id="settingsBtn" class="settings-btn" title="设置">⚙</button>
   <h1>全网资源聚合搜索</h1>
   <p class="sub">书籍 · 视频 · 音频 · 网盘分享 · 磁力 —— 标注可用性与付费状态</p>
 </header>
@@ -19,23 +20,71 @@
 </div>
 
 <div class="filters">
-  <label><input type="checkbox" data-type="video" checked> 视频</label>
-  <label><input type="checkbox" data-type="book" checked> 书籍</label>
-  <label><input type="checkbox" data-type="audio" checked> 音频</label>
+  <label><input type="checkbox" data-type="video"> 视频</label>
+  <label><input type="checkbox" data-type="book"> 书籍</label>
+  <label><input type="checkbox" data-type="audio"> 音频</label>
   <label><input type="checkbox" data-type="netdisk_share" checked> 网盘</label>
   <label><input type="checkbox" data-type="magnet" checked> 磁力</label>
   <label class="intl" title="国际源（Internet Archive / Open Library），需本地配置代理"><input type="checkbox" id="intl"> 国际源</label>
+  <label class="intl" title="知乎文章/回答 + 微信公众号搜索，需配置登录 cookie / sidecar"><input type="checkbox" id="social"> 知乎/微信</label>
   <label class="free-only"><input type="checkbox" id="freeOnly"> 仅看免费</label>
 </div>
 
 <div id="panFilters" class="pan-filters"></div>
+<div id="articleFilters" class="pan-filters"></div>
 <div id="status" class="status"></div>
 <div id="results"></div>
+
+<!-- 设置弹窗：第一步密码验证 → 第二步配置 -->
+<div id="settingsModal" class="modal hidden">
+  <div class="modal-mask"></div>
+  <div class="modal-card">
+    <button class="modal-close" title="关闭">×</button>
+
+    <!-- 步骤0：管理未启用 -->
+    <div id="lockedStep" class="modal-step hidden">
+      <h2>🔒 管理功能未启用</h2>
+      <p class="modal-hint">
+        服务器尚未配置管理密码。在服务器 <code>.env</code> 中设置
+        <code>ADMIN_PASSWORD=你的管理密码</code> 后，此设置面板才会开放。
+        本地开发可先在 <code>.env</code> 里加一行启用。
+      </p>
+    </div>
+
+    <!-- 步骤1：验证密码 -->
+    <div id="authStep" class="modal-step hidden">
+      <h2>🔒 管理验证</h2>
+      <p class="modal-hint">请输入管理密码继续</p>
+      <input type="password" id="adminPwd" placeholder="管理密码" autocomplete="current-password">
+      <button id="authGo" class="modal-primary">验证</button>
+      <p class="modal-err" id="authErr"></p>
+    </div>
+
+    <!-- 步骤2：配置 -->
+    <div id="configStep" class="modal-step hidden">
+      <h2>⚙ 设置</h2>
+
+      <div class="config-section">
+        <h3>知乎 Cookie</h3>
+        <p class="modal-hint">
+          知乎搜索接口需登录态。浏览器登录
+          <a href="https://www.zhihu.com" target="_blank" rel="noopener">zhihu.com</a>
+          后，F12 → Application → Cookies → 复制 <code>z_c0</code> 的值粘贴到下面
+          （整串 cookie 也可以，d_c0 自动获取）。约 30 天更新一次。
+        </p>
+        <p class="modal-hint" id="zhihuStatus"></p>
+        <textarea id="zhihuCookie" rows="3" placeholder="粘贴 z_c0 值或完整 cookie"></textarea>
+        <button id="saveZhihu" class="modal-primary">保存</button>
+        <span class="modal-err ok-text" id="zhihuSaveMsg"></span>
+      </div>
+    </div>
+  </div>
+</div>
 
 <footer>
   <p>仅供个人学习研究 · 不存储任何资源文件，仅索引公开链接 · 版权归权利人所有</p>
 </footer>
 
-<script src="app.js"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

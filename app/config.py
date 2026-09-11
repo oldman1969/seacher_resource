@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 # .env 中的敏感项（cookie / api key），通过 os.environ 读取
 SENSITIVE_KEYS = [
     "BILI_SESSDATA",
+    "ZHIHU_COOKIE",
     "YOUTUBE_API_KEY",
     "SPOTIFY_CLIENT_ID",
     "SPOTIFY_CLIENT_SECRET",
@@ -70,6 +71,10 @@ DEFAULT_CONFIG: dict = {
         "spotify": {"enabled": False},
         "podcastindex": {"enabled": False},
         "weread": {"enabled": False},
+        # 知乎/微信（group=social，on-demand）：zhihu 读 .env 的 ZHIHU_COOKIE；
+        # wechat 走搜狗微信搜索，免登录免 sidecar
+        "zhihu": {"enabled": False},
+        "wechat": {"enabled": False},
     },
     "probe": {},
     "search": {},

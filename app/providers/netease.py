@@ -28,6 +28,8 @@ class NeteaseProvider(BaseProvider):
 
     async def search(self, keyword: str, limit: int = 10) -> list[Resource]:
         try:
+            # 网易云搜索接口 limit 上限 100（超出返回 400），钳制到安全范围
+            limit = min(limit, 100)
             resp = await self.client.post(
                 SEARCH_URL,
                 data={"s": keyword, "type": 1, "limit": limit, "offset": 0},

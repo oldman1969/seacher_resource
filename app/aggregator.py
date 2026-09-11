@@ -33,17 +33,19 @@ async def search_all(
     limit = per_source_limit or config.search.per_source_limit
 
     async def run_one(provider: BaseProvider) -> None:
+        # 单源超时：provider 可自定义（如翻页的微信），默认用全局 deadline
+        timeout = provider.deadline or deadline
         try:
             resources = await asyncio.wait_for(
                 provider.search(keyword, limit),
-                timeout=deadline,
+                timeout=timeout,
             )
             # 按请求的类型过滤
             if types:
                 resources = [r for r in resources if r.type in types]
             raw.extend(resources)
         except asyncio.TimeoutError:
-            errors.append({"source": provider.name, "error": f"超时(>{deadline}s)"})
+            errors.append({"source": provider.name, "error": f"超时(>{timeout}s)"})
         except ProviderError as exc:
             errors.append({"source": exc.source, "error": exc.reason})
         except Exception as exc:  # noqa: BLE001

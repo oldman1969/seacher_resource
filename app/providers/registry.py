@@ -27,6 +27,8 @@ def _register_all() -> None:
     from app.providers.netease import NeteaseProvider
     from app.providers.openlibrary import OpenLibraryProvider
     from app.providers.pansou import PanSouProvider
+    from app.providers.wechat import WechatProvider
+    from app.providers.zhihu import ZhihuProvider
 
     for cls in (
         BilibiliProvider,
@@ -37,6 +39,8 @@ def _register_all() -> None:
         OpenLibraryProvider,
         GutenbergProvider,
         LibriVoxProvider,
+        ZhihuProvider,
+        WechatProvider,
     ):
         PROVIDERS[cls.name] = cls
 
@@ -62,7 +66,7 @@ def build_providers(
             if pconf.enabled:
                 logger.warning("未知 provider: %s", name)
             continue
-        if not pconf.enabled and not cls.on_demand:
+        if cls.group == "default" and not pconf.enabled:
             continue
         merged = ProviderConfig(
             enabled=True,
@@ -82,7 +86,7 @@ def provider_infos(config: AppConfig) -> list[ProviderInfo]:
     infos: list[ProviderInfo] = []
     for name, cls in PROVIDERS.items():
         pconf = config.providers.get(name)
-        on_demand = cls.on_demand
+        on_demand = cls.group != "default"
         enabled = bool(pconf and pconf.enabled) or on_demand
         status = "on_demand" if on_demand else ("ok" if enabled else "disabled")
         infos.append(ProviderInfo(

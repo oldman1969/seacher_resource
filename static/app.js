@@ -2,7 +2,7 @@
 
 const TYPE_LABEL = {
   video: "视频", book: "书籍", audio: "音频",
-  netdisk_share: "网盘分享", magnet: "磁力链接",
+  netdisk_share: "网盘分享", magnet: "磁力链接", article: "文章",
 };
 const PAY_LABEL = {
   free: "免费", paid: "付费", vip: "VIP", unknown: "未知",
@@ -15,7 +15,8 @@ const PAN_LABEL = {
 const AVAIL_LABEL = {
   available: "✓ 可用", unavailable: "✗ 已失效", unverified: "？验证",
 };
-const COVER_ICON = { video: "▶", book: "📖", audio: "🎵", netdisk_share: "📁", magnet: "🧲" };
+const SOURCE_LABEL = { zhihu: "知乎", wechat: "微信" };
+const COVER_ICON = { video: "▶", book: "📖", audio: "🎵", netdisk_share: "📁", magnet: "🧲", article: "📄" };
 
 const kwEl = document.getElementById("kw");
 const goEl = document.getElementById("go");
@@ -24,11 +25,14 @@ const resultsEl = document.getElementById("results");
 const freeOnlyEl = document.getElementById("freeOnly");
 const depthEl = document.getElementById("depth");
 const intlEl = document.getElementById("intl");
+const socialEl = document.getElementById("social");
 const panFiltersEl = document.getElementById("panFilters");
+const articleFiltersEl = document.getElementById("articleFilters");
 
 const PAGE_SIZE = 50;          // 每页条数
 let lastData = null;           // 供「仅看免费」/「网盘过滤」重渲染
 let panTypeFilter = null;      // 网盘类型过滤：null=全部，否则为具体 pan_type
+let articleSourceFilter = null; // 文章来源过滤：null=全部，zhihu/wechat
 let pageState = {};            // { [type]: 当前页码 }
 
 kwEl.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
@@ -44,6 +48,8 @@ async function doSearch() {
   const q = kwEl.value.trim();
   if (!q) return;
   const types = selectedTypes();
+  // 知乎/微信结果类型是 article，勾选时自动纳入
+  if (socialEl.checked && !types.includes("article")) types.push("article");
   if (!types.length) { statusEl.textContent = "请至少选择一种资源类型"; return; }
 
   goEl.disabled = true;
@@ -51,12 +57,13 @@ async function doSearch() {
   resultsEl.innerHTML = '<div class="loading">正在并发查询各数据源…</div>';
 
   try {
-    const url = `/api/search?q=${encodeURIComponent(q)}&types=${types.join(",")}&depth=${depthEl.checked}&include_intl=${intlEl.checked}`;
+    const url = `/api/search?q=${encodeURIComponent(q)}&types=${types.join(",")}&depth=${depthEl.checked}&include_intl=${intlEl.checked}&include_social=${socialEl.checked}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     lastData = data;
     panTypeFilter = null;   // 重置网盘过滤
+    articleSourceFilter = null; // 重置文章来源过滤
     pageState = {};         // 重置分页
     statusEl.innerHTML =
       `耗时 ${data.elapsed_ms} ms` +
@@ -77,8 +84,9 @@ function render(data) {
   resultsEl.innerHTML = "";
   const freeOnly = freeOnlyEl.checked;
 
-  // 1. 网盘来源过滤条（仅当有网盘结果时）
+  // 1. 网盘来源过滤条 + 文章来源过滤条（仅当有相应结果时）
   renderPanFilters(data);
+  renderArticleFilters(data);
 
   let total = 0;
 
@@ -87,6 +95,10 @@ function render(data) {
     // 网盘类型过滤（只作用于 netdisk_share）
     if (type === "netdisk_share" && panTypeFilter) {
       shown = shown.filter((r) => r.pan_type === panTypeFilter);
+    }
+    // 文章来源过滤（只作用于 article）
+    if (type === "article" && articleSourceFilter) {
+      shown = shown.filter((r) => r.source === articleSourceFilter);
     }
     if (!shown.length) continue;
     total += shown.length;
@@ -138,6 +150,32 @@ function renderPanFilters(data) {
     wrap.appendChild(chip);
   }
   panFiltersEl.appendChild(wrap);
+}
+
+function renderArticleFilters(data) {
+  articleFiltersEl.innerHTML = "";
+  const articles = data.results.article || [];
+  const sources = [...new Set(articles.map((r) => r.source).filter(Boolean))];
+  if (!sources.length) return;
+
+  const wrap = document.createElement("div");
+  wrap.className = "pan-filter-label";
+  wrap.textContent = "文章来源：";
+
+  const all = document.createElement("button");
+  all.className = "pan-chip" + (articleSourceFilter === null ? " active" : "");
+  all.textContent = "全部";
+  all.onclick = () => { articleSourceFilter = null; render(lastData); };
+  wrap.appendChild(all);
+
+  for (const s of sources) {
+    const chip = document.createElement("button");
+    chip.className = "pan-chip" + (articleSourceFilter === s ? " active" : "");
+    chip.textContent = SOURCE_LABEL[s] || s;
+    chip.onclick = () => { articleSourceFilter = s; render(lastData); };
+    wrap.appendChild(chip);
+  }
+  articleFiltersEl.appendChild(wrap);
 }
 
 function makePager(type, page, totalPages) {
@@ -298,6 +336,118 @@ async function verifyResource(r, el) {
     el.title = exc.message;
   }
 }
+
+// ------------------------------------------------------------ 设置弹窗（右上角齿轮）
+
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsModal = document.getElementById("settingsModal");
+const lockedStep = document.getElementById("lockedStep");
+const authStep = document.getElementById("authStep");
+const configStep = document.getElementById("configStep");
+const adminPwdEl = document.getElementById("adminPwd");
+const authGoEl = document.getElementById("authGo");
+const authErrEl = document.getElementById("authErr");
+const zhihuStatusEl = document.getElementById("zhihuStatus");
+const zhihuCookieEl = document.getElementById("zhihuCookie");
+const saveZhihuEl = document.getElementById("saveZhihu");
+const zhihuSaveMsgEl = document.getElementById("zhihuSaveMsg");
+
+function showStep(step) {
+  [lockedStep, authStep, configStep].forEach((s) => s.classList.add("hidden"));
+  step.classList.remove("hidden");
+}
+
+function openModal() {
+  settingsModal.classList.remove("hidden");
+  // 先试已有 admin 会话（2 小时内免重复验证）
+  loadZhihuStatus().then((state) => {
+    if (state === "ok") {
+      showStep(configStep);
+    } else if (state === "auth") {
+      showStep(authStep);
+      adminPwdEl.value = "";
+      adminPwdEl.focus();
+    } else {
+      showStep(lockedStep);  // 管理未启用
+    }
+  });
+}
+
+function closeModal() {
+  settingsModal.classList.add("hidden");
+  authErrEl.textContent = "";
+  zhihuSaveMsgEl.textContent = "";
+}
+
+settingsBtn.addEventListener("click", openModal);
+settingsModal.querySelector(".modal-mask").addEventListener("click", closeModal);
+settingsModal.querySelector(".modal-close").addEventListener("click", closeModal);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !settingsModal.classList.contains("hidden")) closeModal();
+});
+adminPwdEl.addEventListener("keydown", (e) => { if (e.key === "Enter") authGoEl.click(); });
+
+authGoEl.addEventListener("click", async () => {
+  authGoEl.disabled = true;
+  authErrEl.textContent = "";
+  try {
+    const r = await fetch("/api/admin/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: adminPwdEl.value }),
+    });
+    if (r.status === 403) { showStep(lockedStep); return; }
+    if (!r.ok) throw new Error(r.status === 401 ? "密码错误" : `HTTP ${r.status}`);
+    // 验证通过 → 切到配置界面
+    showStep(configStep);
+    await loadZhihuStatus();
+  } catch (exc) {
+    authErrEl.textContent = exc.message;
+  } finally {
+    authGoEl.disabled = false;
+  }
+});
+
+async function loadZhihuStatus() {
+  try {
+    const r = await fetch("/api/admin/zhihu-cookie/status");
+    if (r.status === 401) return "auth";     // 需验证密码
+    if (r.status === 403) return "locked";   // 管理未启用
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    zhihuStatusEl.textContent = d.configured
+      ? "状态：✓ 已配置（失效时重新粘贴保存即可，无需重启）"
+      : "状态：✗ 未配置（知乎源不可用，不影响其他源）";
+    zhihuStatusEl.classList.toggle("ok", d.configured);
+    return "ok";
+  } catch {
+    zhihuStatusEl.textContent = "状态：无法获取";
+    return "ok";  // 已过验证，只是状态获取失败
+  }
+}
+
+saveZhihuEl.addEventListener("click", async () => {
+  const cookie = zhihuCookieEl.value.trim();
+  if (!cookie) { zhihuSaveMsgEl.textContent = "请先粘贴 cookie"; return; }
+  saveZhihuEl.disabled = true;
+  zhihuSaveMsgEl.textContent = "保存中…";
+  try {
+    const r = await fetch("/api/admin/zhihu-cookie", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cookie }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || `HTTP ${r.status}`);
+    zhihuSaveMsgEl.textContent = "✓ 已保存并生效";
+    zhihuCookieEl.value = "";
+    loadZhihuStatus();
+  } catch (exc) {
+    zhihuSaveMsgEl.textContent = `保存失败: ${exc.message}`;
+  } finally {
+    saveZhihuEl.disabled = false;
+  }
+});
 
 function fmtCount(n) {
   if (n >= 1e8) return (n / 1e8).toFixed(1) + "亿";
