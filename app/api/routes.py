@@ -155,10 +155,22 @@ async def update_zhihu_cookie(request: Request, body: dict):
     if not cookie:
         raise HTTPException(422, "cookie 不能为空")
 
-    # 写 .env（保留其他键）+ 更新当前进程（provider 每次搜索热读 os.environ）
+    # 直接读写 .env（不用 dotenv.set_key：它内部 os.replace 重命名临时文件，
+    # 对 Docker 单文件 bind mount `./.env:/app/.env` 会报 device busy 导致 500）。
+    # 保留其他键，只更新 ZHIHU_COOKIE；写入后同步当前进程环境变量（provider 热读）。
     import app.config as config_mod
-    from dotenv import set_key
 
-    set_key(str(config_mod.PROJECT_ROOT / ".env"), "ZHIHU_COOKIE", cookie)
+    env_path = config_mod.PROJECT_ROOT / ".env"
+    lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+    updated = False
+    for i, ln in enumerate(lines):
+        if ln.startswith("ZHIHU_COOKIE="):
+            lines[i] = f"ZHIHU_COOKIE={cookie}"
+            updated = True
+            break
+    if not updated:
+        lines.append(f"ZHIHU_COOKIE={cookie}")
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
     os.environ["ZHIHU_COOKIE"] = cookie
     return {"ok": True}
